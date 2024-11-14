@@ -32,9 +32,8 @@ const ContentManagement = () => {
 
   const handleContentSubmit = async (e) => {
     e.preventDefault();
-    setError(''); // Reset error
+    setError('');
 
-    // Validation
     if (!file) {
       setError('Please upload a file.');
       return;
@@ -61,11 +60,7 @@ const ContentManagement = () => {
       resetForm();
       fetchContent();
     } catch (err) {
-      if (err.response) {
-        setError(err.response.data || 'Error submitting content, please try again later.');
-      } else {
-        setError('Error submitting content, please try again later.');
-      }
+      setError(err.response.data || 'Error submitting content, please try again later.');
     } finally {
       setLoading(false);
     }
@@ -141,7 +136,7 @@ const ContentManagement = () => {
         />
         <input
           type="file"
-          accept="image/*" // Assuming thumbnails are images
+          accept=".mp4,.mkv,.webm,.avi,.mp3,.wav,.pdf,.docx,.xlsx,.pptx" // Set allowed file types based on content type
           onChange={(e) => setFile(e.target.files[0])}
           style={styles.fileInput}
           required
@@ -156,7 +151,7 @@ const ContentManagement = () => {
         <ul style={styles.list}>
           {content.map((item) => (
             <li key={item._id} style={styles.listItem}>
-              <strong>{item.title}</strong> ({item.contentType}) - {item.description}
+              <strong>{item.title} ({item.contentType})</strong> - {item.description}
               <button onClick={() => handleEditContent(item)} style={styles.editButton}>Edit</button>
               <button onClick={() => handleDeleteContent(item._id)} style={styles.deleteButton}>Delete</button>
             </li>
