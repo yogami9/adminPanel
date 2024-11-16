@@ -1,247 +1,176 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
 const ContentManagement = () => {
-  const [content, setContent] = useState([]);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [contentType, setContentType] = useState('Article');
-  const [thumbnail, setThumbnail] = useState('');
-  const [file, setFile] = useState(null);
-  const [editingContentId, setEditingContentId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [contentType, setContentType] = useState('Video'); // Default type
+    const [thumbnail, setThumbnail] = useState(null); // For image file
+    const [file, setFile] = useState(null); // For main content file
+    const [isPremium, setIsPremium] = useState(false);
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [loading, setLoading] = useState(false); // Loading state
 
-  const fetchContent = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('https://motivata.onrender.com/api/content', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setContent(response.data);
-    } catch (err) {
-      setError('Error fetching content, please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleContentSubmit = async (e) => {
+        e.preventDefault(); // Prevent form submission
 
-  useEffect(() => {
-    fetchContent();
-  }, []);
+        // Reset previous messages
+        setError('');
+        setSuccessMessage('');
+        setLoading(true); // Set loading state to true
 
-  const handleContentSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+        // Create a FormData object
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('contentType', contentType);
+        formData.append('isPremium', isPremium);
 
-    if (!file) {
-      setError('Please upload a file.');
-      return;
-    }
+        // Check for image file upload
+        if (thumbnail) {
+            formData.append('thumbnail', thumbnail);
+        } else {
+            setError('Please upload a thumbnail image.');
+            setLoading(false);
+            return; // Exit if thumbnail is missing
+        }
 
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('contentType', contentType);
-    formData.append('thumbnail', thumbnail);
-    formData.append('file', file);
+        // Check for content file upload
+        if (file) {
+            formData.append('file', file);
+        } else {
+            setError('Please upload a content file.');
+            setLoading(false);
+            return; // Exit if file is missing
+        }
 
-    try {
-      setLoading(true);
-      if (editingContentId) {
-        await axios.put(`https://motivata.onrender.com/api/content/${editingContentId}`, formData, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-      } else {
-        await axios.post('https://motivata.onrender.com/api/content', formData, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-      }
-      resetForm();
-      fetchContent();
-    } catch (err) {
-      setError(err.response.data || 'Error submitting content, please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        try {
+            // Get the token from local storage
+            const token = localStorage.getItem('token'); 
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setContentType('Article');
-    setThumbnail('');
-    setFile(null);
-    setEditingContentId(null);
-  };
+            // Make the API request
+            const response = await axios.post('https://motivata.onrender.com/api/content', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}` // Add the token to the header
+                },
+            });
 
-  const handleEditContent = (item) => {
-    setTitle(item.title);
-    setDescription(item.description);
-    setContentType(item.contentType);
-    setThumbnail(item.thumbnail);
-    setEditingContentId(item._id);
-  };
+            console.log('Content submitted successfully:', response.data);
+            setSuccessMessage('Content uploaded successfully!'); // Success message
+            resetForm(); // Reset form fields after a successful submission
+        } catch (err) {
+            console.error('Error submitting content:', err.response ? err.response.data : err.message);
+            setError(err.response?.data || 'Failed to submit content. Please try again.'); // General error message
+        } finally {
+            setLoading(false); // Set loading state back to false
+        }
+    };
 
-  const handleDeleteContent = async (id) => {
-    if (window.confirm('Are you sure you want to delete this content?')) {
-      try {
-        await axios.delete(`https://motivata.onrender.com/api/content/${id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-        fetchContent();
-      } catch (err) {
-        setError('Error deleting content, please try again later.');
-      }
-    }
-  };
+    // Reset the form fields
+    const resetForm = () => {
+        setTitle('');
+        setDescription('');
+        setContentType('Video');
+        setThumbnail(null);
+        setFile(null);
+        setIsPremium(false);
+    };
 
-  return (
-    <div style={styles.container}>
-      <h2>Content Management</h2>
-      {error && <div style={styles.error}>{error}</div>}
-      <form onSubmit={handleContentSubmit} style={styles.form}>
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          style={styles.input}
-        />
-        <input
-          type="text"
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          required
-          style={styles.input}
-        />
-        <select
-          value={contentType}
-          onChange={(e) => setContentType(e.target.value)}
-          style={styles.select}
-        >
-          <option value="Article">Article</option>
-          <option value="Video">Video</option>
-          <option value="Podcast">Podcast</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Thumbnail URL"
-          value={thumbnail}
-          onChange={(e) => setThumbnail(e.target.value)}
-          required
-          style={styles.input}
-        />
-        <input
-          type="file"
-          accept=".mp4,.mkv,.webm,.avi,.mp3,.wav,.pdf,.docx,.xlsx,.pptx" // Set allowed file types based on content type
-          onChange={(e) => setFile(e.target.files[0])}
-          style={styles.fileInput}
-          required
-        />
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? 'Processing...' : editingContentId ? 'Update Content' : 'Add Content'}
-        </button>
-      </form>
-      {loading ? (
-        <div style={styles.loading}>Loading...</div>
-      ) : (
-        <ul style={styles.list}>
-          {content.map((item) => (
-            <li key={item._id} style={styles.listItem}>
-              <strong>{item.title} ({item.contentType})</strong> - {item.description}
-              <button onClick={() => handleEditContent(item)} style={styles.editButton}>Edit</button>
-              <button onClick={() => handleDeleteContent(item._id)} style={styles.deleteButton}>Delete</button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-};
-
-// Simple styles object
-const styles = {
-  container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'stretch',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    marginBottom: '20px',
-  },
-  input: {
-    padding: '10px',
-    margin: '10px 0',
-    fontSize: '16px',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-  },
-  select: {
-    padding: '10px',
-    margin: '10px 0',
-    fontSize: '16px',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-  },
-  fileInput: {
-    margin: '10px 0',
-  },
-  button: {
-    padding: '10px',
-    backgroundColor: '#28a745',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '16px',
-  },
-  editButton: {
-    margin: '0 5px',
-    padding: '5px 10px',
-    backgroundColor: '#007bff',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '3px',
-    cursor: 'pointer',
-  },
-  deleteButton: {
-    margin: '0 5px',
-    padding: '5px 10px',
-    backgroundColor: '#dc3545',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '3px',
-    cursor: 'pointer',
-  },
-  list: {
-    listStyleType: 'none',
-    padding: 0,
-  },
-  listItem: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '10px',
-    borderBottom: '1px solid #ccc',
-  },
-  loading: {
-    textAlign: 'center',
-    fontSize: '18px',
-    color: '#007bff',
-  },
-  error: {
-    color: 'red',
-    marginBottom: '10px',
-    textAlign: 'center',
-  },
+    return (
+        <div className="max-w-lg mx-auto p-6 border rounded-lg shadow-md bg-gray-50">
+            <h2 className="text-xl font-bold text-center mb-4">Create Content</h2>
+            <form onSubmit={handleContentSubmit} className="space-y-4">
+                <div>
+                    <label htmlFor="title" className="block font-semibold mb-1">Title:</label>
+                    <input 
+                        id="title"
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        required
+                        className="block w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-200"
+                        placeholder="Enter the title"
+                    />
+                </div>
+                
+                <div>
+                    <label htmlFor="description" className="block font-semibold mb-1">Description:</label>
+                    <textarea 
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        required
+                        className="block w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-200"
+                        placeholder="Provide a brief description"
+                        rows={4} // More visible space for input
+                    />
+                </div>
+                
+                <div>
+                    <label htmlFor="contentType" className="block font-semibold mb-1">Content Type:</label>
+                    <select 
+                        id="contentType"
+                        value={contentType}
+                        onChange={(e) => setContentType(e.target.value)}
+                        className="block w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-200"
+                    >
+                        <option value="Video">Video</option>
+                        <option value="Podcast">Podcast</option>
+                        <option value="Article">Article</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label htmlFor="thumbnail" className="block font-semibold mb-1">Thumbnail:</label>
+                    <input 
+                        id="thumbnail"
+                        type="file"
+                        accept="image/*" 
+                        onChange={(e) => setThumbnail(e.target.files[0])}
+                        required
+                        className="block w-full border border-gray-300 rounded-md focus:outline-none"
+                    />
+                </div>
+                
+                <div>
+                    <label htmlFor="file" className="block font-semibold mb-1">File:</label>
+                    <input 
+                        id="file"
+                        type="file"
+                        accept=".mp4, .mkv, .webm, .avi, .mp3, .wav, .pdf, .docx, .xlsx, .pptx"
+                        onChange={(e) => setFile(e.target.files[0])}
+                        required
+                        className="block w-full border border-gray-300 rounded-md focus:outline-none"
+                    />
+                </div>
+                
+                <div className="flex items-center">
+                    <input 
+                        type="checkbox"
+                        checked={isPremium}
+                        onChange={(e) => setIsPremium(e.target.checked)}
+                        className="mr-2" 
+                    />
+                    <label className="font-semibold">Is Premium:</label>
+                </div>
+                
+                {error && <div className="text-red-600 mt-2">{error}</div>}
+                {successMessage && <div className="text-green-600 mt-2">{successMessage}</div>}
+                
+                <button 
+                    type="submit" 
+                    disabled={loading} // Disable button when loading
+                    className={`w-full p-2 text-white rounded-md transition duration-200 ${
+                        loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                >
+                    {loading ? 'Submitting...' : 'Submit Content'} 
+                </button>
+            </form>
+        </div>
+    );
 };
 
 export default ContentManagement;

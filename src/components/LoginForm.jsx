@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+
+/*This line imports the React library and specifically the useState Hook, which allows functional components to manage state. useState is a React Hook that adds state to functional components. */
 import axios from 'axios';
 import { IoPerson, IoLockClosed } from 'react-icons/io5'; // Icons for user and password
 
